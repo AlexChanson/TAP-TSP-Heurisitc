@@ -1,0 +1,43 @@
+plugins {
+    id 'java'
+}
+
+group 'com.alexscode.tap.tspheur'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+
+def f = new File('./jars/algs4.jar')
+if (!f.exists()) {
+    new URL('https://algs4.cs.princeton.edu/code/algs4.jar').withInputStream{ i -> f.withOutputStream{ it << i }}
+}
+
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    // Algorithms 4th edition code
+    implementation(files("jars/algs4.jar"))
+    // https://mvnrepository.com/artifact/org.jgrapht/jgrapht-core
+    implementation 'org.jgrapht:jgrapht-core:1.5.1'
+
+
+    //Lombok
+    compileOnly 'org.projectlombok:lombok:1.18.24'
+    annotationProcessor 'org.projectlombok:lombok:1.18.24'
+
+    testCompileOnly 'org.projectlombok:lombok:1.18.24'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.24'
+
+    // https://mvnrepository.com/artifact/com.google.guava/guava
+    implementation 'com.google.guava:guava:11.0.2'
+
+
+}
+
+test {
+    useJUnitPlatform()
+}
