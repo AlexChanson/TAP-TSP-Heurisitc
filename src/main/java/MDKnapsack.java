@@ -17,9 +17,9 @@ public class MDKnapsack {
 
         double totalC1 = 0, totalC2 = 0;
         for (Element item : order){
-            System.out.println(w1[item.index] + " | " + + w2[item.index]);
+            //System.out.println(w1[item.index] + " | " + + w2[item.index]);
             if (totalC1 + w1[item.index] > c1 || totalC2 + w2[item.index] > c2) {
-                System.out.println("Rejected");
+                //System.out.println("Rejected");
                 continue;
             } else {
                 solution[item.index] = true;

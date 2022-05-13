@@ -3,18 +3,17 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.io.*;
-import java.util.List;
 import java.util.Scanner;
 
 @Data
 @AllArgsConstructor
-public class InstanceLegacy {
+public class Instance {
     int size;
     double[][] distances;
     double[] costs;
     double[] interest;
 
-    public static InstanceLegacy fromFilter(InstanceLegacy original, boolean[] keep){
+    public static Instance fromFilter(Instance original, boolean[] keep){
         int size = 0;
         for (boolean b : keep) {
             if (b) size++;
@@ -37,16 +36,16 @@ public class InstanceLegacy {
             }
         }
 
-        return new InstanceLegacy(size, distances, costs, interest);
+        return new Instance(size, distances, costs, interest);
     }
 
-    public static InstanceLegacy readFile(String path){
+    public static Instance readFile(String path){
         Scanner scanner = null;
         try {
             scanner = new Scanner(new File(path));
         } catch (FileNotFoundException e) {
             e.printStackTrace();
-            return new InstanceLegacy(0, null, null, null);
+            return new Instance(0, null, null, null);
         }
 
         String line = scanner.nextLine();
@@ -82,7 +81,7 @@ public class InstanceLegacy {
             i++;
         }
 
-        return new InstanceLegacy(nbActions, distances, costsOrig, relevancesOrig);
+        return new Instance(nbActions, distances, costsOrig, relevancesOrig);
     }
 
 }

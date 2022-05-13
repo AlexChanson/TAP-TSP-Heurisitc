@@ -12,62 +12,64 @@ import java.util.stream.IntStream;
 
 public class TSPStyle {
     public static void main(String[] args) {
-        final String file = "0_300.dat";
-        final String path="C:\\Users\\chanson\\Desktop\\instances\\tap_" + file;
-        //final String path ="/users/21500078t/instances/tap_" + file;
+        final String file = "special_200.dat";
+        //final String path="C:\\Users\\chanson\\Desktop\\instances\\tap_" + file;
+        final String path ="/users/21500078t/instances/tap_" + file;
 
-        double temps = 0.8, dist = 0.5;
-        boolean modeFull = true;
-
-        InstanceLegacy ist = InstanceLegacy.readFile(path);
+        Instance ist = Instance.readFile(path);
         System.out.println("Loaded " + path + " | " + ist.size + " queries");
+
+        boolean modeFull = false;
+
+        double temps = 0.35, dist = 0.25;
         double epdist = Math.round( dist * ist.size * 4.5);
         double eptime = Math.round(temps * ist.size * 27.5f);
 
         long startTime = System.nanoTime();
+
+        double lb = Utils.getLB(ist, eptime, epdist)*0.5;
+        System.out.println("  LB is " + lb);
+
         // 1 solve affectation
         List<List<Integer>> subtours = solveAffectation(ist.distances);
         System.out.println(subtours.size());
         System.out.println(subtours.stream().map(List::size).collect(Collectors.toList()));
 
         List<List<Integer>> selected = new ArrayList<>();
-        if (modeFull) {
+
+        // Path A vs Path B we can stitch everything or only a subset of tours
+
+        // 2.1.1 solve Md-KS to find a collection of subtours
+        boolean[] KSSolution = MDKnapsack.solve2DNaive(subtours.stream().mapToDouble(st -> Utils.subtourValue(st, ist)).toArray(),
+                subtours.stream().mapToDouble(st -> Utils.subtourTime(st, ist)).toArray(), eptime,
+                subtours.stream().mapToDouble(st -> Utils.subtourDistance(st, ist)).toArray(), epdist);
+        for (int i = 0; i < KSSolution.length; i++) {
+            if (KSSolution[i])
+                selected.add(subtours.get(i));
+        }
+
+        double path_b_ub = selected.stream().flatMap(List::stream).mapToDouble(idx -> ist.interest[idx]).sum();
+        if (lb > path_b_ub){
+            selected.clear();
             selected.addAll(subtours);
-        }
-        else {
-            // 2.1.1 solve Md-KS to find a collection of subtours
-            boolean[] KSSolution = MDKnapsack.solve2DNaive(subtours.stream().mapToDouble(st -> subtourValue(st, ist)).toArray(),
-                    subtours.stream().mapToDouble(st -> subtourTime(st, ist)).toArray(), eptime,
-                    subtours.stream().mapToDouble(st -> subtourDistance(st, ist)).toArray(), epdist);
-            for (int i = 0; i < KSSolution.length; i++) {
-                if (KSSolution[i])
-                    selected.add(subtours.get(i));
-            }
-        }
+            System.out.println("Selected path A over lb condition");
+        }else
+            System.out.println("Selected path B");
 
         // 2.1.2 stitch subtours
         List<Integer> full = stitch(selected, ist);
         System.out.println("Checking subtour stiching ... " + full.size() + "/" + selected.stream().mapToInt(List::size).sum());
 
         // 2.1.3 check constraint (distance)
-        System.out.println("Objective: "+ subtourValue(full, ist));
-        System.out.println("Time constraint: "+ subtourTime(full, ist)  + "/" + eptime);
-        System.out.println("Distance constraint: "+ (subtourDistance(full, ist) - maxEdgeValue(full, ist)) + "/" + epdist);
-        boolean dis_check = subtourDistance(full, ist) > epdist + maxEdgeValue(full, ist) || subtourTime(full, ist) > eptime;
+        System.out.println("Objective: "+ Utils.subtourValue(full, ist));
+        System.out.println("Time constraint: "+ Utils.subtourTime(full, ist)  + "/" + eptime);
+        System.out.println("Distance constraint: "+ (Utils.subtourDistance(full, ist) - maxEdgeValue(full, ist)) + "/" + epdist);
+        boolean cstr_check = Utils.subtourDistance(full, ist) > epdist + maxEdgeValue(full, ist) || Utils.subtourTime(full, ist) > eptime;
 
         // 2.1.4
-        if (dis_check){
-            System.out.println("  --> constraint violated running elimination");
-            /*
-            while (dis_check){
-                List<Element> gains = new ArrayList<>();
-                for (int i = 0; i < full.size(); i++) {
-                    gains.add(new Element(i, ist.interest[full.get(i)]));
-                }
-                gains.sort(Comparator.comparing(Element::getValue));//.reversed());
-                full.remove(gains.get(0).index);
-                dis_check = subtourDistance(full, ist) > epdist + maxEdge(full, ist) || subtourTime(full, ist) > eptime;
-            }*/
+        int max_iter = 10;
+        while (cstr_check && max_iter > 0){
+            System.out.println("  Constraint(s) violated running reducer");
 
             //Switch to sequence for this
             int posme = argMaxEdge(full, ist);
@@ -75,15 +77,18 @@ public class TSPStyle {
                 full = getAligned(full, posme);
 
             Reducer rd = new Reducer(ist, full);
-            rd.setLb(235);
-            List<Integer> toRemove = rd.toRemove(subtourTime(full, ist) - eptime, sequenceDistance(full, ist) - epdist);
-            System.out.println(toRemove);
+
+            rd.setLb(lb);
+
+            List<Integer> toRemove = rd.toRemove(Utils.subtourTime(full, ist) - eptime, Utils.sequenceDistance(full, ist) - epdist);
+            System.out.println("  Removed:" + toRemove);
             full.removeAll(toRemove.stream().filter(i -> i >= 0).map(full::get).collect(Collectors.toList()));
 
-            System.out.println("  Objective: "+ subtourValue(full, ist));
-            System.out.println("  Time constraint: "+ subtourTime(full, ist)  + "/" + eptime);
-            System.out.println("  Distance constraint: "+ (subtourDistance(full, ist) - maxEdgeValue(full, ist)) + "/" + epdist);
-
+            System.out.println("  Objective: "+ Utils.subtourValue(full, ist));
+            System.out.println("  Time constraint: "+ Utils.subtourTime(full, ist)  + "/" + eptime);
+            System.out.println("  Distance constraint: "+ (Utils.subtourDistance(full, ist) - maxEdgeValue(full, ist)) + "/" + epdist);
+            cstr_check = Utils.subtourDistance(full, ist) > epdist + maxEdgeValue(full, ist) || Utils.subtourTime(full, ist) > eptime;
+            max_iter--;
 
         }
 
@@ -95,7 +100,7 @@ public class TSPStyle {
 
 
 
-    public static List<Integer> stitch(List<List<Integer>> tours, InstanceLegacy ist){
+    public static List<Integer> stitch(List<List<Integer>> tours, Instance ist){
 
         Graph<Integer, StitchOP> g = new SimpleGraph<>(StitchOP.class);
         IntStream.rangeClosed(0, tours.size()).forEach(g::addVertex);
@@ -158,7 +163,7 @@ public class TSPStyle {
     }
 
     // alternating algorithm from https://vlsicad.ucsd.edu/Publications/Journals/j67.pdf#page=11&zoom=100,0,422
-    public static StitchOP getApproximateStitch(List<Integer> a, List<Integer> b, InstanceLegacy ist){
+    public static StitchOP getApproximateStitch(List<Integer> a, List<Integer> b, Instance ist){
         HashSet<StitchOP> history = new HashSet<>();
         StitchOP current = new StitchOP();
         current.vertex1a = a.get(0);
@@ -226,27 +231,7 @@ public class TSPStyle {
     }
 
 
-    public static double subtourValue(List<Integer> tour, InstanceLegacy ist){
-        return tour.stream().mapToDouble(i -> ist.interest[i]).sum();
-    }
-
-    public static double subtourTime(List<Integer> tour, InstanceLegacy ist){
-        return tour.stream().mapToDouble(i -> ist.costs[i]).sum();
-    }
-
-    public static double subtourDistance(List<Integer> tour, InstanceLegacy ist){
-        return ist.distances[tour.get(tour.size() - 1)][tour.get(0)] + sequenceDistance(tour, ist);
-    }
-
-    public static double sequenceDistance(List<Integer> tour, InstanceLegacy ist){
-        double d = 0;
-        for (int i = 0; i < tour.size() - 1; i++) {
-            d += ist.distances[tour.get(i)][tour.get(i+1)];
-        }
-        return d;
-    }
-
-    public static double maxEdgeValue(List<Integer> tour, InstanceLegacy ist){
+    public static double maxEdgeValue(List<Integer> tour, Instance ist){
         double max = ist.distances[tour.get(tour.size() - 1)][tour.get(0)];
         for (int i = 0; i < tour.size() - 1; i++) {
             double d = ist.distances[tour.get(i)][tour.get(i+1)];
@@ -256,7 +241,7 @@ public class TSPStyle {
         return max;
     }
 
-    public static int argMaxEdge(List<Integer> tour, InstanceLegacy ist){
+    public static int argMaxEdge(List<Integer> tour, Instance ist){
         double max = ist.distances[tour.get(tour.size() - 1)][tour.get(0)];
         int right = 0;
         for (int i = 0; i < tour.size() - 1; i++) {

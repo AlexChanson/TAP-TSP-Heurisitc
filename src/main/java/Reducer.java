@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class Reducer {
-    InstanceLegacy ist;
+    Instance ist;
     double[][] distances;
     double[] costs;
     double[] interest;
@@ -16,7 +16,7 @@ public class Reducer {
     double ub = 0;
     ArrayList<Table<Double, Double, double[]>> cache = new ArrayList<>();
 
-    public Reducer(InstanceLegacy ist, List<Integer> sol) {
+    public Reducer(Instance ist, List<Integer> sol) {
         this.ist = ist;
         distances = ist.distances;
         costs = ist.costs;
@@ -29,7 +29,7 @@ public class Reducer {
     }
 
     public List<Integer> toRemove(double deltaT, double deltaD){
-        double[] r = remove_old(1, deltaT, deltaD, 0);
+        double[] r = remove_old(1, deltaT, deltaD, 0);//0
         return Arrays.stream(r).skip(1).mapToInt(d -> (int) d).boxed().collect(Collectors.toList());
     }
 
@@ -74,8 +74,9 @@ public class Reducer {
             return new double[]{Double.POSITIVE_INFINITY};
 
         double[] cached = cache.get(from).get(deltaT, deltaD);
-        if (cached != null)
+        if (cached != null) {
             return cached;
+        }
 
         double[] next = remove_old(from + 1, deltaT, deltaD, deltaI);
         double[] nextnext = remove_old(from + 2,
