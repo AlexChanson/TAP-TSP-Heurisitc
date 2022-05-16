@@ -1,0 +1,2 @@
+PROBLEM_FILE ./data/brazil58.tsp
+OUTPUT_TOUR_FILE ./data/tour_out.temp

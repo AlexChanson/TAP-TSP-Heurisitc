@@ -76,7 +76,7 @@ public class TSPStyle {
             if (posme != 0)
                 full = getAligned(full, posme);
 
-            Reducer rd = new Reducer(ist, full);
+            DynamicReducer rd = new DynamicReducer(ist, full);
 
             rd.setLb(lb);
 
