@@ -39,19 +39,21 @@ public class LKH2Wrapper {
         try {
             Process process = processBuilder.start();
             //Press any key to continue
+            System.out.print("  Called LKH ...");
 
             final BufferedReader wr = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            final BufferedWriter writer = new BufferedWriter(
-                    new OutputStreamWriter(process.getOutputStream()));
-            String line = "";
+            final BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
+            String line = ""; boolean tryExit = false;
             try {
                 while ((line = wr.readLine()) != null) {
-                    if (line.contains("Press any key to continue")) {
-                        String newLine = "\n\r";
-                        writer.write(newLine);
-
+                    if (line.contains("Time.total")) {
+                        tryExit = true;
+                        System.out.println(" " + line);
                     }
-                    System.out.println(line);
+                    if (tryExit) {
+                        writer.write('c');
+                        writer.flush();
+                    }
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -76,7 +78,7 @@ public class LKH2Wrapper {
                     if (node < 0)
                         reading = false;
                     else {
-                        out.add(node);
+                        out.add(node-1);
                     }
                 }
                 if (line.contains("TOUR_SECTION"))

@@ -13,8 +13,8 @@ import java.util.stream.IntStream;
 public class TSPStyle {
     public static void main(String[] args) {
         final String file = "special_200.dat";
-        //final String path="C:\\Users\\chanson\\Desktop\\instances\\tap_" + file;
-        final String path ="/users/21500078t/instances/tap_" + file;
+        final String path="C:\\Users\\chanson\\Desktop\\instances\\tap_" + file;
+        //final String path ="/users/21500078t/instances/tap_" + file;
 
         Instance ist = Instance.readFile(path);
         System.out.println("Loaded " + path + " | " + ist.size + " queries");
@@ -27,13 +27,14 @@ public class TSPStyle {
 
         long startTime = System.nanoTime();
 
-        double lb = Utils.getLB(ist, eptime, epdist)*0.5;
-        System.out.println("  LB is " + lb);
+        double lb = Utils.getLB(ist, eptime, epdist);
+        System.out.println("  LB = " + lb);
 
         // 1 solve affectation
         List<List<Integer>> subtours = solveAffectation(ist.distances);
-        System.out.println(subtours.size());
-        System.out.println(subtours.stream().map(List::size).collect(Collectors.toList()));
+        System.out.println("Subtours");
+        System.out.println("  |S| = " + subtours.size() + ", sum |s| in S = " + subtours.stream().mapToInt(List::size).sum());
+        System.out.println("  " + subtours.stream().map(List::size).collect(Collectors.toList()));
 
         List<List<Integer>> selected = new ArrayList<>();
 
@@ -67,8 +68,7 @@ public class TSPStyle {
         boolean cstr_check = Utils.subtourDistance(full, ist) > epdist + maxEdgeValue(full, ist) || Utils.subtourTime(full, ist) > eptime;
 
         // 2.1.4
-        int max_iter = 10;
-        while (cstr_check && max_iter > 0){
+        if (cstr_check){
             System.out.println("  Constraint(s) violated running reducer");
 
             //Switch to sequence for this
@@ -76,25 +76,44 @@ public class TSPStyle {
             if (posme != 0)
                 full = getAligned(full, posme);
 
-            DynamicReducer rd = new DynamicReducer(ist, full);
-
-            rd.setLb(lb);
-
-            List<Integer> toRemove = rd.toRemove(Utils.subtourTime(full, ist) - eptime, Utils.sequenceDistance(full, ist) - epdist);
-            System.out.println("  Removed:" + toRemove);
-            full.removeAll(toRemove.stream().filter(i -> i >= 0).map(full::get).collect(Collectors.toList()));
+            Reducer rd = new AdaptiveReducer(ist, full, epdist, eptime);
+            full = rd.reduce(Utils.subtourTime(full, ist) - eptime, Utils.sequenceDistance(full, ist) - epdist);
 
             System.out.println("  Objective: "+ Utils.subtourValue(full, ist));
             System.out.println("  Time constraint: "+ Utils.subtourTime(full, ist)  + "/" + eptime);
             System.out.println("  Distance constraint: "+ (Utils.subtourDistance(full, ist) - maxEdgeValue(full, ist)) + "/" + epdist);
-            cstr_check = Utils.subtourDistance(full, ist) > epdist + maxEdgeValue(full, ist) || Utils.subtourTime(full, ist) > eptime;
-            max_iter--;
 
         }
+
+        if (lb <= path_b_ub){
+            System.out.println("Running path A");
+            List<Integer> full_alt = stitch(subtours, ist);
+            cstr_check = Utils.subtourDistance(full_alt, ist) > epdist + maxEdgeValue(full_alt, ist) || Utils.subtourTime(full_alt, ist) > eptime;
+
+            if (cstr_check) {
+                //Switch to sequence for this
+                int posme = argMaxEdge(full_alt, ist);
+                if (posme != 0)
+                    full_alt = getAligned(full_alt, posme);
+
+                Reducer rd = new AdaptiveReducer(ist, full_alt, epdist, eptime);
+                full_alt = rd.reduce(Utils.subtourTime(full_alt, ist) - eptime, Utils.sequenceDistance(full_alt, ist) - epdist);
+
+                System.out.println("  Objective: " + Utils.subtourValue(full_alt, ist));
+                System.out.println("  Time constraint: " + Utils.subtourTime(full_alt, ist) + "/" + eptime);
+                System.out.println("  Distance constraint: " + (Utils.subtourDistance(full_alt, ist) - maxEdgeValue(full_alt, ist)) + "/" + epdist);
+            }
+
+            if (Utils.subtourValue(full_alt, ist) > Utils.subtourValue(full, ist))
+                full = full_alt;
+        }
+
 
         long endTime = System.nanoTime();
         long duration = (endTime - startTime)/1000000;
         System.out.println("RUNTIME = " + duration / 1000.0 + " s");
+        System.out.println("SOLUTION = " + full);
+        System.out.println("Z = " + Utils.subtourValue(full, ist));
 
     }
 

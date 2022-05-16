@@ -1,3 +1,4 @@
+import com.google.common.collect.Lists;
 import com.google.common.collect.Table;
 import com.google.common.collect.TreeBasedTable;
 import lombok.Setter;
@@ -28,9 +29,11 @@ public class DynamicReducer  implements Reducer{
         }
     }
 
-    public List<Integer> toRemove(double deltaT, double deltaD){
+    //toRemove.stream().filter(i -> i >= 0).map(full::get).collect(Collectors.toList())
+    public List<Integer> reduce(double deltaT, double deltaD){
         double[] r = remove_old(1, deltaT, deltaD, 0);//0
-        return Arrays.stream(r).skip(1).mapToInt(d -> (int) d).boxed().collect(Collectors.toList());
+        List<Integer> toRemove = Arrays.stream(r).skip(1).mapToInt(d -> (int) d).boxed().toList();
+        return Arrays.stream(sol).boxed().filter(x -> !toRemove.contains(x)).toList();
     }
 
     private double[] remove(int from, double deltaT, double deltaD){

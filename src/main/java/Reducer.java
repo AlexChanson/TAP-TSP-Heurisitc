@@ -1,5 +1,5 @@
 import java.util.List;
 
 public interface Reducer {
-    List<Integer> toRemove(double deltaT, double deltaD);
+    List<Integer> reduce(double deltaT, double deltaD);
 }
