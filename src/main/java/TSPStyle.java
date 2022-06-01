@@ -12,109 +12,111 @@ import java.util.stream.IntStream;
 
 public class TSPStyle {
     public static void main(String[] args) {
-        final String file = "special_200.dat";
-        final String path="C:\\Users\\chanson\\Desktop\\instances\\tap_" + file;
-        //final String path ="/users/21500078t/instances/tap_" + file;
+        for (int taille : new int[]{100, 200, 300, 400, 500}) {
+            for (int series_id = 0; series_id < 30; series_id++) {
 
-        Instance ist = Instance.readFile(path);
-        System.out.println("Loaded " + path + " | " + ist.size + " queries");
 
-        boolean modeFull = false;
+                final String file = series_id + "_" + taille + ".dat";
+                //final String path="C:\\Users\\chanson\\Desktop\\instances\\tap_" + file;
+                final String path = "/users/21500078t/instances/tap_" + file;
 
-        double temps = 0.35, dist = 0.25;
-        double epdist = Math.round( dist * ist.size * 4.5);
-        double eptime = Math.round(temps * ist.size * 27.5f);
+                Instance ist = Instance.readFile(path);
+                System.out.println("Loaded " + path + " | " + ist.size + " queries");
 
-        long startTime = System.nanoTime();
+                double temps = 0.25, dist = 0.35;
+                double epdist = Math.round(dist * ist.size * 4.5);
+                double eptime = Math.round(temps * ist.size * 27.5f);
 
-        double lb = Utils.getLB(ist, eptime, epdist);
-        System.out.println("  LB = " + lb);
+                long startTime = System.nanoTime();
 
-        // 1 solve affectation
-        List<List<Integer>> subtours = solveAffectation(ist.distances);
-        System.out.println("Subtours");
-        System.out.println("  |S| = " + subtours.size() + ", sum |s| in S = " + subtours.stream().mapToInt(List::size).sum());
-        System.out.println("  " + subtours.stream().map(List::size).collect(Collectors.toList()));
+                double lb = Utils.getLB(ist, eptime, epdist);
+                System.out.println("  LB = " + lb);
 
-        List<List<Integer>> selected = new ArrayList<>();
+                // 1 solve affectation
+                List<List<Integer>> subtours = solveAffectation(ist.distances);
+                System.out.println("Subtours");
+                System.out.println("  |S| = " + subtours.size() + ", sum |s| in S = " + subtours.stream().mapToInt(List::size).sum());
+                System.out.println("  " + subtours.stream().map(List::size).collect(Collectors.toList()));
 
-        // Path A vs Path B we can stitch everything or only a subset of tours
+                List<List<Integer>> selected = new ArrayList<>();
 
-        // 2.1.1 solve Md-KS to find a collection of subtours
-        boolean[] KSSolution = MDKnapsack.solve2DNaive(subtours.stream().mapToDouble(st -> Utils.subtourValue(st, ist)).toArray(),
-                subtours.stream().mapToDouble(st -> Utils.subtourTime(st, ist)).toArray(), eptime,
-                subtours.stream().mapToDouble(st -> Utils.subtourDistance(st, ist)).toArray(), epdist);
-        for (int i = 0; i < KSSolution.length; i++) {
-            if (KSSolution[i])
-                selected.add(subtours.get(i));
-        }
+                // Path A vs Path B we can stitch everything or only a subset of tours
 
-        double path_b_ub = selected.stream().flatMap(List::stream).mapToDouble(idx -> ist.interest[idx]).sum();
-        if (lb > path_b_ub){
-            selected.clear();
-            selected.addAll(subtours);
-            System.out.println("Selected path A over lb condition");
-        }else
-            System.out.println("Selected path B");
+                // 2.1.1 solve Md-KS to find a collection of subtours
+                boolean[] KSSolution = MDKnapsack.solve2DNaive(subtours.stream().mapToDouble(st -> Utils.subtourValue(st, ist)).toArray(),
+                        subtours.stream().mapToDouble(st -> Utils.subtourTime(st, ist)).toArray(), eptime,
+                        subtours.stream().mapToDouble(st -> Utils.subtourDistance(st, ist)).toArray(), epdist);
+                for (int i = 0; i < KSSolution.length; i++) {
+                    if (KSSolution[i])
+                        selected.add(subtours.get(i));
+                }
 
-        // 2.1.2 stitch subtours
-        List<Integer> full = stitch(selected, ist);
-        System.out.println("Checking subtour stiching ... " + full.size() + "/" + selected.stream().mapToInt(List::size).sum());
+                double path_b_ub = selected.stream().flatMap(List::stream).mapToDouble(idx -> ist.interest[idx]).sum();
+                if (lb > path_b_ub) {
+                    selected.clear();
+                    selected.addAll(subtours);
+                    System.out.println("Selected path A over lb condition");
+                } else
+                    System.out.println("Selected path B");
 
-        // 2.1.3 check constraint (distance)
-        System.out.println("Objective: "+ Utils.subtourValue(full, ist));
-        System.out.println("Time constraint: "+ Utils.subtourTime(full, ist)  + "/" + eptime);
-        System.out.println("Distance constraint: "+ (Utils.subtourDistance(full, ist) - maxEdgeValue(full, ist)) + "/" + epdist);
-        boolean cstr_check = Utils.subtourDistance(full, ist) > epdist + maxEdgeValue(full, ist) || Utils.subtourTime(full, ist) > eptime;
+                // 2.1.2 stitch subtours
+                List<Integer> full = stitch(selected, ist);
+                System.out.println("Checking subtour stiching ... " + full.size() + "/" + selected.stream().mapToInt(List::size).sum());
 
-        // 2.1.4
-        if (cstr_check){
-            System.out.println("  Constraint(s) violated running reducer");
+                // 2.1.3 check constraint (distance)
+                System.out.println("Objective: " + Utils.subtourValue(full, ist));
+                System.out.println("Time constraint: " + Utils.subtourTime(full, ist) + "/" + eptime);
+                System.out.println("Distance constraint: " + (Utils.subtourDistance(full, ist) - maxEdgeValue(full, ist)) + "/" + epdist);
+                boolean cstr_check = Utils.subtourDistance(full, ist) > epdist + maxEdgeValue(full, ist) || Utils.subtourTime(full, ist) > eptime;
 
-            //Switch to sequence for this
-            int posme = argMaxEdge(full, ist);
-            if (posme != 0)
-                full = getAligned(full, posme);
+                // 2.1.4
+                if (cstr_check) {
+                    System.out.println("  Constraint(s) violated running reducer");
 
-            Reducer rd = new AdaptiveReducer(ist, full, epdist, eptime);
-            full = rd.reduce(Utils.subtourTime(full, ist) - eptime, Utils.sequenceDistance(full, ist) - epdist);
+                    //Switch to sequence for this
+                    int posme = argMaxEdge(full, ist);
+                    if (posme != 0)
+                        full = getAligned(full, posme);
 
-            System.out.println("  Objective: "+ Utils.subtourValue(full, ist));
-            System.out.println("  Time constraint: "+ Utils.subtourTime(full, ist)  + "/" + eptime);
-            System.out.println("  Distance constraint: "+ (Utils.subtourDistance(full, ist) - maxEdgeValue(full, ist)) + "/" + epdist);
+                    Reducer rd = new AdaptiveReducer(ist, full, epdist, eptime);
+                    full = rd.reduce(Utils.subtourTime(full, ist) - eptime, Utils.sequenceDistance(full, ist) - epdist);
 
-        }
+                    System.out.println("  Objective: " + Utils.subtourValue(full, ist));
+                    System.out.println("  Time constraint: " + Utils.subtourTime(full, ist) + "/" + eptime);
+                    System.out.println("  Distance constraint: " + (Utils.subtourDistance(full, ist) - maxEdgeValue(full, ist)) + "/" + epdist);
 
-        if (lb <= path_b_ub){
-            System.out.println("Running path A");
-            List<Integer> full_alt = stitch(subtours, ist);
-            cstr_check = Utils.subtourDistance(full_alt, ist) > epdist + maxEdgeValue(full_alt, ist) || Utils.subtourTime(full_alt, ist) > eptime;
+                }
 
-            if (cstr_check) {
-                //Switch to sequence for this
-                int posme = argMaxEdge(full_alt, ist);
-                if (posme != 0)
-                    full_alt = getAligned(full_alt, posme);
+                if (lb <= path_b_ub) {
+                    System.out.println("Running path A");
+                    List<Integer> full_alt = stitch(subtours, ist);
+                    cstr_check = Utils.subtourDistance(full_alt, ist) > epdist + maxEdgeValue(full_alt, ist) || Utils.subtourTime(full_alt, ist) > eptime;
 
-                Reducer rd = new AdaptiveReducer(ist, full_alt, epdist, eptime);
-                full_alt = rd.reduce(Utils.subtourTime(full_alt, ist) - eptime, Utils.sequenceDistance(full_alt, ist) - epdist);
+                    if (cstr_check) {
+                        //Switch to sequence for this
+                        int posme = argMaxEdge(full_alt, ist);
+                        if (posme != 0)
+                            full_alt = getAligned(full_alt, posme);
 
-                System.out.println("  Objective: " + Utils.subtourValue(full_alt, ist));
-                System.out.println("  Time constraint: " + Utils.subtourTime(full_alt, ist) + "/" + eptime);
-                System.out.println("  Distance constraint: " + (Utils.subtourDistance(full_alt, ist) - maxEdgeValue(full_alt, ist)) + "/" + epdist);
+                        Reducer rd = new AdaptiveReducer(ist, full_alt, epdist, eptime);
+                        full_alt = rd.reduce(Utils.subtourTime(full_alt, ist) - eptime, Utils.sequenceDistance(full_alt, ist) - epdist);
+
+                        System.out.println("  Objective: " + Utils.subtourValue(full_alt, ist));
+                        System.out.println("  Time constraint: " + Utils.subtourTime(full_alt, ist) + "/" + eptime);
+                        System.out.println("  Distance constraint: " + (Utils.subtourDistance(full_alt, ist) - maxEdgeValue(full_alt, ist)) + "/" + epdist);
+                    }
+
+                    if (Utils.subtourValue(full_alt, ist) > Utils.subtourValue(full, ist))
+                        full = full_alt;
+                }
+
+
+                long endTime = System.nanoTime();
+                long duration = (endTime - startTime) / 1000000;
+                System.out.println("$RES$=" + series_id + "," + ist.size + "," + duration / 1000.0 + ";" + Utils.subtourValue(full, ist) + ";" + full.toString().replace("[", "").replace("]", ""));
+
             }
-
-            if (Utils.subtourValue(full_alt, ist) > Utils.subtourValue(full, ist))
-                full = full_alt;
         }
-
-
-        long endTime = System.nanoTime();
-        long duration = (endTime - startTime)/1000000;
-        System.out.println("RUNTIME = " + duration / 1000.0 + " s");
-        System.out.println("SOLUTION = " + full);
-        System.out.println("Z = " + Utils.subtourValue(full, ist));
-
     }
 
 

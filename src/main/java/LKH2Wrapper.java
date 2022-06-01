@@ -8,7 +8,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class LKH2Wrapper {
-    private static String binPath = "./bin/LKH-2.exe";
+    //private static String binPath = "./bin/LKH-2.exe";
+    private static String binPath = "/users/21500078t/LKH-2.0.9/LKH";
     private static Path tempFolder = Paths.get(System.getProperty("java.io.tmpdir"));
 
     public static void setBinPath(String binPath) {
