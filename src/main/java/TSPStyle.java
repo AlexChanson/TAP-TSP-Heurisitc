@@ -1,3 +1,4 @@
+import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import edu.princeton.cs.algs4.AssignmentProblem;
 import lombok.Getter;
@@ -16,11 +17,20 @@ import java.util.stream.IntStream;
 
 public class TSPStyle {
     @Parameter(names={"--instances", "-c"})
-    static String ist_folder;
+    String ist_folder;
     @Parameter(names={"--res", "-r"})
-    static String res_file;
+    String res_file;
 
     public static void main(String[] args) {
+        TSPStyle main = new TSPStyle();
+        JCommander.newBuilder()
+                .addObject(main)
+                .build()
+                .parse(args);
+        main.run();
+    }
+
+    public void run(){
         PrintWriter out = null;
         try {
             out = new PrintWriter(new File(res_file));
