@@ -82,7 +82,11 @@ public class TSPStyle {
                     System.out.println("Selected path B");
 
                 // 2.1.2 stitch subtours
-                List<Integer> full = stitch(selected, ist);
+                List<Integer> full;
+                if (selected.size() > 1)
+                    full = stitch(selected, ist);
+                else
+                    full = selected.get(0);
                 System.out.println("Checking subtour stiching ... " + full.size() + "/" + selected.stream().mapToInt(List::size).sum());
 
                 // 2.1.3 check constraint (distance)
