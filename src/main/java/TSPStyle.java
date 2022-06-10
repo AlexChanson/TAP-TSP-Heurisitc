@@ -1,3 +1,4 @@
+import com.beust.jcommander.Parameter;
 import edu.princeton.cs.algs4.AssignmentProblem;
 import lombok.Getter;
 import org.jgrapht.Graph;
@@ -6,24 +7,35 @@ import org.jgrapht.alg.spanning.KruskalMinimumSpanningTree;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class TSPStyle {
+    @Parameter(names={"--instances", "-c"})
+    static String ist_folder;
+    @Parameter(names={"--res", "-r"})
+    static String res_file;
+
     public static void main(String[] args) {
-        for (int taille : new int[]{100, 200, 300, 400, 500}) {
+        PrintWriter out = null;
+        try {
+            out = new PrintWriter(new File(res_file));
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+        out.println("series_id;size;time;z;solution");
+        for (int taille : new int[]{100, 200, 300, 400, 500, 600, 700}) {
             for (int series_id = 0; series_id < 30; series_id++) {
-
-
-                final String file = series_id + "_" + taille + ".dat";
-                //final String path="C:\\Users\\chanson\\Desktop\\instances\\tap_" + file;
-                final String path = "/users/21500078t/instances/tap_" + file;
+                final String path = ist_folder + "tap_" + series_id + "_" + taille + ".dat";
 
                 Instance ist = Instance.readFile(path);
                 System.out.println("Loaded " + path + " | " + ist.size + " queries");
 
-                double temps = 0.25, dist = 0.35;
+                double temps = 0.3, dist = 0.6;
                 double epdist = Math.round(dist * ist.size * 4.5);
                 double eptime = Math.round(temps * ist.size * 27.5f);
 
@@ -113,10 +125,13 @@ public class TSPStyle {
 
                 long endTime = System.nanoTime();
                 long duration = (endTime - startTime) / 1000000;
-                System.out.println("$RES$=" + series_id + "," + ist.size + "," + duration / 1000.0 + ";" + Utils.subtourValue(full, ist) + ";" + full.toString().replace("[", "").replace("]", ""));
-
+                //System.out.println("$RES$=" + series_id + "," + ist.size + "," + duration / 1000.0 + ";" + Utils.subtourValue(full, ist) + ";" + full.toString().replace("[", "").replace("]", ""));
+                out.println(series_id + ";" + ist.size + ";" + duration / 1000.0 + ";" + Utils.subtourValue(full, ist) + ";" + full.toString().replace("[", "").replace("]", ""));
             }
+            out.flush();
         }
+
+        out.close();
     }
 
 
