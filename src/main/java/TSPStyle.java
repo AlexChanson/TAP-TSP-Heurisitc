@@ -45,9 +45,11 @@ public class TSPStyle {
                 Instance ist = Instance.readFile(path);
                 System.out.println("Loaded " + path + " | " + ist.size + " queries");
 
-                double temps = 0.3, dist = 0.6;
-                double epdist = Math.round(dist * ist.size * 4.5);
-                double eptime = Math.round(temps * ist.size * 27.5f);
+                double temps = 0.6, dist = 0.3;
+                //double epdist = Math.round(dist * ist.size * 4.5);
+                double epdist = Math.round(dist * ist.size * 7);
+                //double eptime = Math.round(temps * ist.size * 27.5f);
+                double eptime = Math.round(temps * ist.size * 6);
 
                 long startTime = System.nanoTime();
 
