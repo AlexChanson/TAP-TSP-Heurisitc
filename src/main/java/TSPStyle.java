@@ -24,6 +24,8 @@ public class TSPStyle {
     String res_file;
     @Parameter(names = {"--debug", "-d"})
     boolean debug;
+    @Parameter(names = {"--lkh"})
+    String lkhPath = null;
 
     public static void main(String[] args) {
         TSPStyle main = new TSPStyle();
@@ -35,6 +37,9 @@ public class TSPStyle {
     }
 
     public void run(){
+        if (lkhPath != null)
+            LKH2Wrapper.binPath = lkhPath;
+
         double temps = 0.6, dist = 0.3;
 
         PrintWriter out = null;
