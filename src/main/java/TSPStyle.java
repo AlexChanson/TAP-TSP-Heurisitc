@@ -57,7 +57,7 @@ public class TSPStyle {
                 configs.add(new Pair<>(i, size));
             }
         }
-        ForkJoinPool pool = new ForkJoinPool(2);
+        ForkJoinPool pool = new ForkJoinPool(threads);
         pool.submit(() -> configs.parallelStream().forEach( conf -> {
 
                 int series_id = conf.getFirst(), taille = conf.getSecond();
