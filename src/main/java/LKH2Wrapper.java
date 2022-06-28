@@ -35,7 +35,7 @@ public class LKH2Wrapper {
                 mask[i] = true;
         }
         Instance toWrite = Instance.fromFilter(ist, mask);
-        writeTSPLIB(toWrite);
+        writeTSPLIB(toWrite, filePath);
 
         ProcessBuilder processBuilder = new ProcessBuilder();
         processBuilder.command(binPath, confPath.toString());
@@ -49,9 +49,9 @@ public class LKH2Wrapper {
             String line = ""; boolean tryExit = false;
             try {
                 while ((line = wr.readLine()) != null) {
+                    //System.out.println(" " + line);
                     if (line.contains("Time.total")) {
                         tryExit = true;
-                        //System.out.println(" " + line);
                     }
                     if (tryExit) {
                         writer.write('c');
@@ -99,8 +99,7 @@ public class LKH2Wrapper {
         }
     }
 
-    private static void writeTSPLIB(Instance ist){
-        Path filePath = Paths.get(tempFolder.toString(), "tmp_ist.tsp");
+    private static void writeTSPLIB(Instance ist, Path filePath){
         try (PrintWriter pw = new PrintWriter(filePath.toFile());){
             pw.println("NAME: tap_tsp_routing");
             pw.println("TYPE: TSP");
