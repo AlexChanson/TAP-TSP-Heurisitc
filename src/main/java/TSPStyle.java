@@ -46,7 +46,7 @@ public class TSPStyle {
         final PrintWriter out = new PrintWriter(new File(res_file));
         out.println("series_id;size;time;z;solution");
 
-        Stream.of(new int[]{40,60,80,100, 200, 300}).parallel().forEach(taille -> { //,60,80,100, 200, 300,
+        Stream.of(40, 60, 80, 100, 200, 300).parallel().forEach(taille -> { //,60,80,100, 200, 300,
             for (int series_id = 0; series_id < 30; series_id++) {
 
                 final String path = ist_folder + "tap_" + series_id + "_" + taille + ".dat";
