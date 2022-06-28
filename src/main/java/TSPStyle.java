@@ -15,6 +15,7 @@ import java.io.PrintWriter;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 
 public class TSPStyle {
@@ -27,7 +28,7 @@ public class TSPStyle {
     @Parameter(names = {"--lkh"})
     String lkhPath = null;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException{
         TSPStyle main = new TSPStyle();
         JCommander.newBuilder()
                 .addObject(main)
@@ -36,21 +37,16 @@ public class TSPStyle {
         main.run();
     }
 
-    public void run(){
+    public void run() throws IOException{
         if (lkhPath != null)
             LKH2Wrapper.binPath = lkhPath;
 
         double temps = 0.6, dist = 0.3;
 
-        PrintWriter out = null;
-        try {
-            out = new PrintWriter(new File(res_file));
-        } catch (IOException e){
-            e.printStackTrace();
-        }
+        final PrintWriter out = new PrintWriter(new File(res_file));
         out.println("series_id;size;time;z;solution");
 
-        for (int taille : new int[]{40,60,80,100, 200, 300}) { //,60,80,100, 200, 300,
+        Stream.of(new int[]{40,60,80,100, 200, 300}).parallel().forEach(taille -> { //,60,80,100, 200, 300,
             for (int series_id = 0; series_id < 30; series_id++) {
 
                 final String path = ist_folder + "tap_" + series_id + "_" + taille + ".dat";
@@ -185,9 +181,9 @@ public class TSPStyle {
 
                 //System.out.println("$RES$=" + series_id + "," + ist.size + "," + duration / 1000.0 + ";" + Utils.subtourValue(full, ist) + ";" + full.toString().replace("[", "").replace("]", ""));
                 out.println(series_id + ";" + ist.size + ";" + duration / 1000.0 + ";" + Utils.subtourValue(solution, ist) + ";" + solution.toString().replace("[", "").replace("]", ""));
+                out.flush();
             }
-            out.flush();
-        }
+        });
 
         out.close();
     }

@@ -4,6 +4,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -17,9 +18,10 @@ public class LKH2Wrapper {
     }
 
     public static List<Integer> solveRouting(Instance ist, List<Integer> subtour){
-        Path filePath = Paths.get(tempFolder.toString(), "tmp_ist.tsp");
-        Path confPath = Paths.get(tempFolder.toString(), "tmp_conf.lkh");
-        Path outPath = Paths.get(tempFolder.toString(), "tmp_sol.tour");
+        UUID uuid = UUID.randomUUID();
+        Path filePath = Paths.get(tempFolder.toString(), "tmp_ist_"+uuid+".tsp");
+        Path confPath = Paths.get(tempFolder.toString(), "tmp_conf_"+uuid+".lkh");
+        Path outPath = Paths.get(tempFolder.toString(), "tmp_sol_"+uuid+".tour");
         try (PrintWriter pw = new PrintWriter(confPath.toFile());){
             pw.println("PROBLEM_FILE " + filePath.toString());
             pw.println("OUTPUT_TOUR_FILE " + outPath.toString());
@@ -90,6 +92,10 @@ public class LKH2Wrapper {
         } catch (IOException e) {
             e.printStackTrace();
             return subtour;
+        } finally {
+            boolean cleanup = filePath.toFile().delete() && confPath.toFile().delete() && outPath.toFile().delete();
+            if (!cleanup)
+                System.err.println("[Warning] Couldn't delete temp files for the LKH solver");
         }
     }
 
