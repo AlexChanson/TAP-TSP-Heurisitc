@@ -59,12 +59,12 @@ public class LKH2Wrapper {
                     }
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                System.err.println("  LKH broken pipe : " + e.getMessage());
             }
 
             int exitCode = process.waitFor();
             if (exitCode != 0)
-                System.out.println("  LKH-2 exited with code : " + exitCode);
+                System.err.println("  LKH exited with code : " + exitCode);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
