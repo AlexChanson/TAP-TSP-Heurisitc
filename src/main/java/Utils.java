@@ -3,8 +3,40 @@ import java.util.Comparator;
 import java.util.List;
 
 public class Utils {
+    public static double maxEdgeValue(List<Integer> tour, Instance ist){
+        double max = ist.distances[tour.get(tour.size() - 1)][tour.get(0)];
+        for (int i = 0; i < tour.size() - 1; i++) {
+            double d = ist.distances[tour.get(i)][tour.get(i+1)];
+            if (d > max)
+                max = d;
+        }
+        return max;
+    }
 
-    public static double getLB(Instance ist, double eptime, double epdist){
+    public static int argMaxEdge(List<Integer> tour, Instance ist){
+        double max = ist.distances[tour.get(tour.size() - 1)][tour.get(0)];
+        int right = 0;
+        for (int i = 0; i < tour.size() - 1; i++) {
+            double d = ist.distances[tour.get(i)][tour.get(i+1)];
+            if (d > max) {
+                max = d;
+                right = i+1;
+            }
+        }
+        return right;
+    }
+
+    static class LBsol{
+        public LBsol(double lb, List<Integer> solution) {
+            this.lb = lb;
+            this.solution = solution;
+        }
+
+        double lb;
+        List<Integer> solution;
+    }
+
+    public static LBsol getLB(Instance ist, double eptime, double epdist){
         List<Integer> solution = new ArrayList<>();
         List<Element> order = new ArrayList<>();
         for (int i = 0; i < ist.size; i++) {
@@ -31,7 +63,7 @@ public class Utils {
             }
         }
         System.out.println("LB Solution: " + solution);
-        return subtourValue(solution, ist);
+        return new LBsol(subtourValue(solution, ist), solution);
     }
 
 

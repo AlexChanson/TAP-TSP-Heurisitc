@@ -8,8 +8,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class LKH2Wrapper {
-    //private static String binPath = "./bin/LKH-2.exe";
-    private static String binPath = "/users/21500078t/LKH-2.0.9/LKH";
+    private static String binPath = "./bin/LKH-3.exe";
+    //private static String binPath = "/users/21500078t/LKH-2.0.9/LKH";
     private static Path tempFolder = Paths.get(System.getProperty("java.io.tmpdir"));
 
     public static void setBinPath(String binPath) {
@@ -40,7 +40,7 @@ public class LKH2Wrapper {
         try {
             Process process = processBuilder.start();
             //Press any key to continue
-            System.out.print("  Called LKH ...");
+            //System.out.print("  Called LKH ...");
 
             final BufferedReader wr = new BufferedReader(new InputStreamReader(process.getInputStream()));
             final BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
@@ -49,7 +49,7 @@ public class LKH2Wrapper {
                 while ((line = wr.readLine()) != null) {
                     if (line.contains("Time.total")) {
                         tryExit = true;
-                        System.out.println(" " + line);
+                        //System.out.println(" " + line);
                     }
                     if (tryExit) {
                         writer.write('c');
@@ -61,7 +61,8 @@ public class LKH2Wrapper {
             }
 
             int exitCode = process.waitFor();
-            System.out.println("  LKH-2 exited with code : " + exitCode);
+            if (exitCode != 0)
+                System.out.println("  LKH-2 exited with code : " + exitCode);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {

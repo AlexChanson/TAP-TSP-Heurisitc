@@ -9,17 +9,21 @@ import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+
 public class TSPStyle {
-    @Parameter(names={"--instances", "-c"})
+    @Parameter(names={"--instances", "-i"})
     String ist_folder;
     @Parameter(names={"--res", "-r"})
     String res_file;
+    @Parameter(names = {"--debug", "-d"})
+    boolean debug;
 
     public static void main(String[] args) {
         TSPStyle main = new TSPStyle();
@@ -31,6 +35,8 @@ public class TSPStyle {
     }
 
     public void run(){
+        double temps = 0.6, dist = 0.3;
+
         PrintWriter out = null;
         try {
             out = new PrintWriter(new File(res_file));
@@ -38,22 +44,33 @@ public class TSPStyle {
             e.printStackTrace();
         }
         out.println("series_id;size;time;z;solution");
-        for (int taille : new int[]{100, 200, 300, 400, 500, 600, 700}) {
-            for (int series_id = 0; series_id < 30; series_id++) {
-                final String path = ist_folder + "tap_" + series_id + "_" + taille + ".dat";
 
+        for (int taille : new int[]{40,60,80,100, 200, 300}) { //,60,80,100, 200, 300,
+            for (int series_id = 0; series_id < 30; series_id++) {
+
+                final String path = ist_folder + "tap_" + series_id + "_" + taille + ".dat";
                 Instance ist = Instance.readFile(path);
                 System.out.println("Loaded " + path + " | " + ist.size + " queries");
 
-                double temps = 0.6, dist = 0.3;
-                //double epdist = Math.round(dist * ist.size * 4.5);
-                double epdist = Math.round(dist * ist.size * 7);
-                //double eptime = Math.round(temps * ist.size * 27.5f);
-                double eptime = Math.round(temps * ist.size * 6);
+                double epdist = 0, eptime =0;
+                if (ist_folder.contains("_f3") || ist_folder.contains("_f4")) {
+                    epdist = Math.round(dist * ist.size * 4.5);
+                    eptime = Math.round(temps * ist.size * 27.5f);
+                } else if (ist_folder.contains("_f1")) {
+                    eptime = Math.round(temps * ist.size * 27.5); //f1
+                    epdist = Math.round(dist * ist.size * 5.5); //f1
+                } else if (ist_folder.contains("_f2")){
+                    epdist = Math.round(dist * ist.size * 7); //f2
+                    eptime = Math.round(temps * ist.size * 6); //f2
+                } else {
+                    System.err.println("instances unknown");
+                    System.exit(22);
+                }
 
                 long startTime = System.nanoTime();
-
-                double lb = Utils.getLB(ist, eptime, epdist);
+                var lbsol = Utils.getLB(ist, eptime, epdist);
+                List<Integer> solution =  lbsol.solution;
+                double lb = lbsol.lb;
                 System.out.println("  LB = " + lb);
 
                 // 1 solve affectation
@@ -67,9 +84,10 @@ public class TSPStyle {
                 // Path A vs Path B we can stitch everything or only a subset of tours
 
                 // 2.1.1 solve Md-KS to find a collection of subtours
-                boolean[] KSSolution = MDKnapsack.solve2DNaive(subtours.stream().mapToDouble(st -> Utils.subtourValue(st, ist)).toArray(),
+                boolean[] KSSolution = MDKnapsack.solve2DNaive(
+                        subtours.stream().mapToDouble(st -> Utils.subtourValue(st, ist)).toArray(),
                         subtours.stream().mapToDouble(st -> Utils.subtourTime(st, ist)).toArray(), eptime,
-                        subtours.stream().mapToDouble(st -> Utils.subtourDistance(st, ist)).toArray(), epdist);
+                        subtours.stream().mapToDouble(st -> Utils.subtourDistance(st, ist)-Utils.maxEdgeValue(st, ist)).toArray(), epdist);
                 for (int i = 0; i < KSSolution.length; i++) {
                     if (KSSolution[i])
                         selected.add(subtours.get(i));
@@ -92,57 +110,76 @@ public class TSPStyle {
                 System.out.println("Checking subtour stiching ... " + full.size() + "/" + selected.stream().mapToInt(List::size).sum());
 
                 // 2.1.3 check constraint (distance)
-                System.out.println("Objective: " + Utils.subtourValue(full, ist));
-                System.out.println("Time constraint: " + Utils.subtourTime(full, ist) + "/" + eptime);
-                System.out.println("Distance constraint: " + (Utils.subtourDistance(full, ist) - maxEdgeValue(full, ist)) + "/" + epdist);
-                boolean cstr_check = Utils.subtourDistance(full, ist) > epdist + maxEdgeValue(full, ist) || Utils.subtourTime(full, ist) > eptime;
+                if (debug) {
+                    System.out.println("Objective: " + Utils.subtourValue(full, ist));
+                    System.out.println("Time constraint: " + Utils.subtourTime(full, ist) + "/" + eptime);
+                    System.out.println("Distance constraint: " + (Utils.subtourDistance(full, ist) - Utils.maxEdgeValue(full, ist)) + "/" + epdist);
+                }
+                boolean cstr_check = Utils.subtourDistance(full, ist) > epdist + Utils.maxEdgeValue(full, ist) || Utils.subtourTime(full, ist) > eptime;
 
                 // 2.1.4
                 if (cstr_check) {
                     System.out.println("  Constraint(s) violated running reducer");
 
                     //Switch to sequence for this
-                    int posme = argMaxEdge(full, ist);
+                    int posme = Utils.argMaxEdge(full, ist);
                     if (posme != 0)
                         full = getAligned(full, posme);
 
                     Reducer rd = new AdaptiveReducer(ist, full, epdist, eptime);
                     full = rd.reduce(Utils.subtourTime(full, ist) - eptime, Utils.sequenceDistance(full, ist) - epdist);
 
-                    System.out.println("  Objective: " + Utils.subtourValue(full, ist));
-                    System.out.println("  Time constraint: " + Utils.subtourTime(full, ist) + "/" + eptime);
-                    System.out.println("  Distance constraint: " + (Utils.subtourDistance(full, ist) - maxEdgeValue(full, ist)) + "/" + epdist);
-
+                    if (debug) {
+                        System.out.println("  Objective: " + Utils.subtourValue(full, ist));
+                        System.out.println("  Time constraint: " + Utils.subtourTime(full, ist) + "/" + eptime);
+                        System.out.println("  Distance constraint: " + (Utils.subtourDistance(full, ist) - Utils.maxEdgeValue(full, ist)) + "/" + epdist);
+                    }
                 }
 
                 if (lb <= path_b_ub) {
                     System.out.println("Running path A");
                     List<Integer> full_alt = stitch(subtours, ist);
-                    cstr_check = Utils.subtourDistance(full_alt, ist) > epdist + maxEdgeValue(full_alt, ist) || Utils.subtourTime(full_alt, ist) > eptime;
+                    cstr_check = Utils.subtourDistance(full_alt, ist) > epdist + Utils.maxEdgeValue(full_alt, ist) || Utils.subtourTime(full_alt, ist) > eptime;
 
                     if (cstr_check) {
                         //Switch to sequence for this
-                        int posme = argMaxEdge(full_alt, ist);
+                        int posme = Utils.argMaxEdge(full_alt, ist);
                         if (posme != 0)
                             full_alt = getAligned(full_alt, posme);
 
                         Reducer rd = new AdaptiveReducer(ist, full_alt, epdist, eptime);
                         full_alt = rd.reduce(Utils.subtourTime(full_alt, ist) - eptime, Utils.sequenceDistance(full_alt, ist) - epdist);
 
-                        System.out.println("  Objective: " + Utils.subtourValue(full_alt, ist));
-                        System.out.println("  Time constraint: " + Utils.subtourTime(full_alt, ist) + "/" + eptime);
-                        System.out.println("  Distance constraint: " + (Utils.subtourDistance(full_alt, ist) - maxEdgeValue(full_alt, ist)) + "/" + epdist);
+                        if (debug) {
+                            System.out.println("  Objective: " + Utils.subtourValue(full_alt, ist));
+                            System.out.println("  Time constraint: " + Utils.subtourTime(full_alt, ist) + "/" + eptime);
+                            System.out.println("  Distance constraint: " + (Utils.subtourDistance(full_alt, ist) - Utils.maxEdgeValue(full_alt, ist)) + "/" + epdist);
+                        }
                     }
 
                     if (Utils.subtourValue(full_alt, ist) > Utils.subtourValue(full, ist))
                         full = full_alt;
                 }
 
+                System.out.println("Val:" + Utils.subtourValue(full, ist));
+                if (Utils.subtourValue(full, ist) > Utils.subtourValue(solution, ist))
+                    solution = full;
 
                 long endTime = System.nanoTime();
                 long duration = (endTime - startTime) / 1000000;
+
+                try {
+                    FileOutputStream fos = new FileOutputStream(ist_folder + "tap_" + series_id + "_" + taille + ".tsp");
+                    PrintWriter pw = new PrintWriter(fos);
+                    pw.println(solution.toString().replace("[", "").replace("]", "").replace(", ", " "));
+                    pw.close();
+                    fos.close();
+                } catch (IOException e){
+                    e.printStackTrace();
+                }
+
                 //System.out.println("$RES$=" + series_id + "," + ist.size + "," + duration / 1000.0 + ";" + Utils.subtourValue(full, ist) + ";" + full.toString().replace("[", "").replace("]", ""));
-                out.println(series_id + ";" + ist.size + ";" + duration / 1000.0 + ";" + Utils.subtourValue(full, ist) + ";" + full.toString().replace("[", "").replace("]", ""));
+                out.println(series_id + ";" + ist.size + ";" + duration / 1000.0 + ";" + Utils.subtourValue(solution, ist) + ";" + solution.toString().replace("[", "").replace("]", ""));
             }
             out.flush();
         }
@@ -282,29 +319,6 @@ public class TSPStyle {
         return current;
     }
 
-
-    public static double maxEdgeValue(List<Integer> tour, Instance ist){
-        double max = ist.distances[tour.get(tour.size() - 1)][tour.get(0)];
-        for (int i = 0; i < tour.size() - 1; i++) {
-            double d = ist.distances[tour.get(i)][tour.get(i+1)];
-            if (d > max)
-                max = d;
-        }
-        return max;
-    }
-
-    public static int argMaxEdge(List<Integer> tour, Instance ist){
-        double max = ist.distances[tour.get(tour.size() - 1)][tour.get(0)];
-        int right = 0;
-        for (int i = 0; i < tour.size() - 1; i++) {
-            double d = ist.distances[tour.get(i)][tour.get(i+1)];
-            if (d > max) {
-                max = d;
-                right = i+1;
-            }
-        }
-        return right;
-    }
 
     public static List<List<Integer>> solveAffectation(double[][] distances){
         List<List<Integer>> subtours = new ArrayList<>();
