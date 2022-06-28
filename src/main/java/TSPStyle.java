@@ -5,6 +5,7 @@ import lombok.Getter;
 import org.jgrapht.Graph;
 import org.jgrapht.alg.interfaces.SpanningTreeAlgorithm;
 import org.jgrapht.alg.spanning.KruskalMinimumSpanningTree;
+import org.jgrapht.alg.util.Pair;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.SimpleGraph;
 
@@ -13,6 +14,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -27,8 +30,10 @@ public class TSPStyle {
     boolean debug;
     @Parameter(names = {"--lkh"})
     String lkhPath = null;
+    @Parameter(names = {"-t", "--threads"})
+    int threads = 2;
 
-    public static void main(String[] args) throws IOException{
+    public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
         TSPStyle main = new TSPStyle();
         JCommander.newBuilder()
                 .addObject(main)
@@ -37,7 +42,7 @@ public class TSPStyle {
         main.run();
     }
 
-    public void run() throws IOException{
+    public void run() throws IOException, ExecutionException, InterruptedException {
         if (lkhPath != null)
             LKH2Wrapper.binPath = lkhPath;
 
@@ -46,9 +51,16 @@ public class TSPStyle {
         final PrintWriter out = new PrintWriter(new File(res_file));
         out.println("series_id;size;time;z;solution");
 
-        Stream.of(40, 60, 80, 100, 200, 300).parallel().forEach(taille -> { //,60,80,100, 200, 300,
-            for (int series_id = 0; series_id < 30; series_id++) {
+        List<Pair<Integer, Integer>> configs = new ArrayList<>();
+        for (int i = 0; i < 30; i++) {
+            for (int size : new int[]{40, 60, 80, 100, 200, 300}) {
+                configs.add(new Pair<>(i, size));
+            }
+        }
+        ForkJoinPool pool = new ForkJoinPool(2);
+        pool.submit(() -> configs.parallelStream().forEach( conf -> {
 
+                int series_id = conf.getFirst(), taille = conf.getSecond();
                 final String path = ist_folder + "tap_" + series_id + "_" + taille + ".dat";
                 Instance ist = Instance.readFile(path);
                 System.out.println("Loaded " + path + " | " + ist.size + " queries");
@@ -182,8 +194,8 @@ public class TSPStyle {
                 //System.out.println("$RES$=" + series_id + "," + ist.size + "," + duration / 1000.0 + ";" + Utils.subtourValue(full, ist) + ";" + full.toString().replace("[", "").replace("]", ""));
                 out.println(series_id + ";" + ist.size + ";" + duration / 1000.0 + ";" + Utils.subtourValue(solution, ist) + ";" + solution.toString().replace("[", "").replace("]", ""));
                 out.flush();
-            }
-        });
+
+        })).get();
 
         out.close();
     }
