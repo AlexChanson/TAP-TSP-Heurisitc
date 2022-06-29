@@ -86,8 +86,9 @@ public class TSPStyle {
                     epdist = Math.round(dist * ist.size * 7); //f2
                     eptime = Math.round(temps * ist.size * 6); //f2
                 } else {
-                    System.err.println("instances unknown");
-                    System.exit(22);
+                    System.err.println("Instances unknown !!!");
+                    epdist = Math.round(dist * ist.size * 4.5);
+                    eptime = Math.round(temps * ist.size * 27.5f);
                 }
 
                 long startTime = System.nanoTime();
@@ -106,7 +107,7 @@ public class TSPStyle {
                 }
 
                 //System.out.println("$RES$=" + series_id + "," + ist.size + "," + duration / 1000.0 + ";" + Utils.subtourValue(full, ist) + ";" + full.toString().replace("[", "").replace("]", ""));
-                out.println(series_id + ";" + ist.size + ";" + duration / 1000.0 + ";" + Utils.subtourValue(solution, ist) + ";" + solution.toString().replace("[", "").replace("]", ""));
+                out.println(series_id + ";" + taille + ";" + duration / 1000.0 + ";" + Utils.subtourValue(solution, ist) + ";" + solution.toString().replace("[", "").replace("]", ""));
                 out.flush();
 
         })).get();
