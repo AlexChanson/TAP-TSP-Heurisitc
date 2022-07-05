@@ -70,25 +70,25 @@ public class TSPStyle {
         ForkJoinPool pool = new ForkJoinPool(threads);
         pool.submit(() -> configs.parallelStream().forEach( conf -> {
 
-                int series_id = conf.getFirst(), taille = conf.getSecond();
-                final String path = ist_folder + "tap_" + series_id + "_" + taille + ".dat";
+                int series_id = conf.getFirst(), size = conf.getSecond();
+                final String path = ist_folder + "tap_" + series_id + "_" + size + ".dat";
                 Instance ist = Instance.readFile(path);
                 System.out.println("Loaded " + path + " | " + ist.size + " queries");
 
                 double epdist = 0, eptime =0;
                 if (ist_folder.contains("_f3") || ist_folder.contains("_f4")) {
-                    epdist = Math.round(dist * ist.size * 4.5);
-                    eptime = Math.round(temps * ist.size * 27.5f);
+                    epdist = Math.round(dist * size * 4.5);
+                    eptime = Math.round(temps * size * 27.5f);
                 } else if (ist_folder.contains("_f1")) {
-                    eptime = Math.round(temps * ist.size * 27.5); //f1
-                    epdist = Math.round(dist * ist.size * 5.5); //f1
+                    eptime = Math.round(temps * size * 27.5); //f1
+                    epdist = Math.round(dist * size * 5.5); //f1
                 } else if (ist_folder.contains("_f2")){
-                    epdist = Math.round(dist * ist.size * 7); //f2
-                    eptime = Math.round(temps * ist.size * 6); //f2
+                    epdist = Math.round(dist * size * 7); //f2
+                    eptime = Math.round(temps * size * 6); //f2
                 } else {
                     System.err.println("Instances unknown !!!");
-                    epdist = Math.round(dist * ist.size * 4.5);
-                    eptime = Math.round(temps * ist.size * 27.5f);
+                    epdist = Math.round(dist * size * 4.5);
+                    eptime = Math.round(temps * size * 27.5f);
                 }
 
                 long startTime = System.nanoTime();
@@ -97,7 +97,7 @@ public class TSPStyle {
                 long duration = (endTime - startTime) / 1000000;
 
                 try {
-                    FileOutputStream fos = new FileOutputStream(ist_folder + "tap_" + series_id + "_" + taille + ".tsp");
+                    FileOutputStream fos = new FileOutputStream(ist_folder + "tap_" + series_id + "_" + size + ".tsp");
                     PrintWriter pw = new PrintWriter(fos);
                     pw.println(solution.toString().replace("[", "").replace("]", "").replace(", ", " "));
                     pw.close();
@@ -107,7 +107,7 @@ public class TSPStyle {
                 }
 
                 //System.out.println("$RES$=" + series_id + "," + ist.size + "," + duration / 1000.0 + ";" + Utils.subtourValue(full, ist) + ";" + full.toString().replace("[", "").replace("]", ""));
-                out.println(series_id + ";" + taille + ";" + duration / 1000.0 + ";" + Utils.subtourValue(solution, ist) + ";" + solution.toString().replace("[", "").replace("]", ""));
+                out.println(series_id + ";" + size + ";" + duration / 1000.0 + ";" + Utils.subtourValue(solution, ist) + ";" + solution.toString().replace("[", "").replace("]", ""));
                 out.flush();
 
         })).get();
